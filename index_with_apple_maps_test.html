@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UBE 輔助工具 - Apple Maps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+    <script src="https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"></script>
+</head>
+<body>
+    <h1>UBE 輔助工具</h1>
+    <p>使用 Apple Maps 自動記錄路名、店名、時間</p>
+
+    <div id="map"></div>
+    <br>
+
+    <label for="storeName">店名：</label>
+    <input type="text" id="storeName" list="storeList" placeholder="輸入店名">
+    <datalist id="storeList"></datalist>
+    <br><br>
+
+    <button onclick="saveData()">記錄當前位置</button>
+    <br><br>
+
+    <div id="result"></div>
+
+    <script>
+        let map;
+        let marker;
+        let currentPosition;
+        let storeHistory = JSON.parse(localStorage.getItem('storeHistory')) || [];
+
+        // 設定 MapKit JS 使用測試金鑰
+        mapkit.init({
+            authorizationCallback: function(done) {
+                done('eyJhbGciOiJFUzI1NiIsImtpZCI6IlRlc3RrZXkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJhcHBsZS5jb20iLCJpYXQiOjE2Nzc1Mjg2MDAsImV4cCI6NDgxMzY5MjAwMH0.N2V9h8BZPMnC7I6G9lKx0OYsMJdPsl5I2HUtScJv5cF98lOUsxBh2x8qU0Yq_wyNNzRHthvPDbfWKNKiX1BaRg');
+            }
+        });
+
+        function initMap() {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                currentPosition = new mapkit.Coordinate(position.coords.latitude, position.coords.longitude);
+
+                map = new mapkit.Map("map");
+                map.setRegion(new mapkit.CoordinateRegion(
+                    currentPosition,
+                    new mapkit.CoordinateSpan(0.01, 0.01)
+                ));
+
+                marker = new mapkit.MarkerAnnotation(currentPosition, {
+                    title: "您的位置"
+                });
+                map.addAnnotation(marker);
+
+                updateStoreList();
+            }, function() {
+                alert("無法取得位置，請確認定位已開啟");
+            });
+        }
+
+        function saveData() {
+            let storeName = document.getElementById('storeName').value;
+            let timestamp = new Date().toLocaleString('zh-TW');
+
+            if (storeName && !storeHistory.includes(storeName)) {
+                storeHistory.push(storeName);
+                localStorage.setItem('storeHistory', JSON.stringify(storeHistory));
+                updateStoreList();
+            }
+
+            let record = {
+                time: timestamp,
+                latitude: currentPosition.latitude,
+                longitude: currentPosition.longitude,
+                store: storeName
+            };
+
+            saveToLocal(record);
+            document.getElementById('result').innerHTML = "✅ 記錄成功！";
+        }
+
+        function saveToLocal(record) {
+            let records = JSON.parse(localStorage.getItem('locationRecords')) || [];
+            records.push(record);
+            localStorage.setItem('locationRecords', JSON.stringify(records));
+        }
+
+        function updateStoreList() {
+            let list = document.getElementById('storeList');
+            list.innerHTML = '';
+            storeHistory.forEach(function(store) {
+                let option = document.createElement('option');
+                option.value = store;
+                list.appendChild(option);
+            });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
